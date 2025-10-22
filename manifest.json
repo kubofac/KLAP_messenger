@@ -1,5 +1,5 @@
 {
-  "name": KLAP_messenger",
+  "name": "KLAP_messenger",
   "short_name": "KLAP_messenger",
   "description": "BLEとGPSに対応したラップタイマーアプリです。",
   "start_url": "/index.html",
@@ -19,4 +19,5 @@
       "type": "image/png"
     }
   ]
+
 }
