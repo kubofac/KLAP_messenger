@@ -4,14 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>KLAP_messenger</title>
+    <title>KLAP_messenger_Receiver</title>
     <link rel="manifest" href="/manifest.json">
     <style>
-        /* 画面全体の設定 */
+        /* 画面全体の設定をリセットし、黒い背景を強制 */
         html, body {
             height: 100%;
+            width: 100%;
             margin: 0;
-            overflow: hidden; /* スクロールを禁止し、画面を最大限に活用 */
+            padding: 0;
+            overflow: hidden; 
+            background-color: #000000; /* 背景を黒に固定 */
         }
 
         body {
@@ -19,49 +22,62 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: space-between;
+            /* bodyの高さを100vhで確保 */
             min-height: 100vh;
             background-color: #000000;
             color: #ffffff;
-            padding: 0; /* paddingを削除し、画面の端まで使う */
             position: relative;
         }
 
+        /* デバッグオーバーレイ（上部に固定） */
+        #debug-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #999999;
+            padding: 5px 10px;
+            font-size: 14px;
+            line-height: 1.5;
+            box-sizing: border-box;
+            z-index: 5;
+            flex-shrink: 0;
+            height: 40px; /* 高さを固定 */
+        }
+        .status-text { text-align: left; margin: 0; }
+        
         /* 画面中央に配置するメッセージのコンテナ */
         #content-wrapper {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            flex-grow: 1;
+            flex-grow: 1; /* 残りのスペースを全て占有 */
             width: 100%;
-            padding: 10px 0;
-            box-sizing: border-box;
-            /* デバッグオーバーレイの下に配置 */
+            /* debug-overlay の下の領域を使う */
             padding-top: 40px; 
+            box-sizing: border-box;
         }
         
         /* ピットメッセージの表示 - 最大サイズ調整 */
         #pitMessageDisplay {
             width: 95%;
-            /* ★★★ 最大フォントサイズ設定: 画面の縦幅(vh)と横幅(vw)両方から決定 ★★★ */
-            /* 横向きで高さに対して大きく、かつ10文字が収まるように調整 */
+            /* 画面の高さを基準にフォントサイズを設定 */
             font-size: 15vh; 
             font-weight: bold;
             color: #ffeb3b; /* 黄色に固定 */
             background: #000000;
             border: none;
             text-align: center;
-            /* 複数行にならないように nowrap */
             white-space: nowrap; 
             overflow: hidden;
             text-overflow: clip;
-            /* 要素自体も画面いっぱいに広げる */
-            height: 100%;
+            height: 100%; /* content-wrapper内で高さを最大限に使う */
             display: flex;
             align-items: center;
             justify-content: center;
-            line-height: 1; /* 行の高さを詰める */
+            line-height: 1; 
             margin: 0;
             padding: 0;
             flex-shrink: 0;
@@ -73,7 +89,7 @@
             justify-content: center;
             width: 100%;
             gap: 20px;
-            padding: 10px 20px; /* 左右に少しパディング */
+            padding: 10px 20px 20px 20px; /* 下部パディングを増やして見やすく */
             flex-shrink: 0;
             margin-top: auto;
             box-sizing: border-box;
@@ -90,7 +106,7 @@
             cursor: pointer;
             transition: background-color 0.2s ease;
             text-align: center;
-            flex-grow: 1; /* ボタンを横いっぱいに広げる */
+            flex-grow: 1; 
             max-width: 300px;
         }
         
@@ -99,23 +115,6 @@
         .ble-disconnected { background-color: #ff4d4d !important; border-color: #993333;}
         .ble-connected { background-color: #007aff !important; border-color: #0066cc;}
 
-        /* デバッグオーバーレイ（上部に固定） */
-        #debug-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: #999999;
-            padding: 5px 10px;
-            font-size: 14px;
-            line-height: 1.5;
-            box-sizing: border-box;
-            z-index: 5;
-            flex-shrink: 0;
-        }
-        .status-text { text-align: left; margin: 0; }
-        
         /* フォントサイズ調整 (特に縦向きや非常に小さな画面用) */
         @media (max-height: 400px) and (orientation: landscape) {
             #pitMessageDisplay {
@@ -142,12 +141,17 @@
 <script>
 'use strict';
 // ----------------------------------------------------
-// ★★★ BLE定数と変数 ★★★
+// ★★★ BLE定数と変数 (ESP32-C3の最新設定に合わせた修正済み) ★★★
 // ----------------------------------------------------
+// サービスUUID: 受信機 ESP32-C3 のものを使用
 const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
-const CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
-const RECEIVER_DEVICE_NAME = 'NRF_Receiver_B';
-let bleCharacteristic;
+// データ特性UUID: 受信機 ESP32-C3 の DATA_CHAR_UUID に合わせる
+const CHARACTERISTIC_UUID = 'beb5483e-36e1-45f1-b40b-361734a96b3a'; 
+// デバイス名: 受信機 ESP32-C3 の名前に合わせる
+const RECEIVER_DEVICE_NAME = 'ESP32_Receiver_A_Data'; 
+
+let bleCharacteristic = null;
+let bleDevice = null; 
 
 const elem = {
     statusDisplay: null,
@@ -161,7 +165,7 @@ const elem = {
 // ----------------------------------------------------
 
 /**
- * BLEデバイスから受信したメッセージを画面に表示する
+ * BLEデバイスから受信したメッセージを画面に表示する (Notifyイベント)
  */
 function handlePitMessage(event) {
     const value = event.target.value;
@@ -175,32 +179,65 @@ function handlePitMessage(event) {
         if (receivedString === '' || receivedString.toLowerCase() === 'なし' || receivedString.toLowerCase() === 'clear') {
             elem.pitMessageDisplay.textContent = 'メッセージを待っています...';
             elem.debugInfo.innerHTML = `最終受信: ${new Date().toLocaleTimeString()} <br><span style="color: #666666;">[PIT] メッセージクリア</span>`;
+            elem.pitMessageDisplay.style.color = '#ffeb3b'; // 初期色に戻す
         } else {
             elem.pitMessageDisplay.textContent = receivedString;
             elem.debugInfo.innerHTML = `最終受信: ${new Date().toLocaleTimeString()} <br><span style="color: #ffeb3b;">[PIT] ${receivedString}</span>`;
+            elem.pitMessageDisplay.style.color = '#ffeb3b'; // 受信メッセージの色
         }
     }
 }
 
 /**
- * NRF Pitデバイスに接続し、通知の監視を開始する
+ * デバイスが切断されたときの処理
+ */
+function onDeviceDisconnected(event) {
+    // 接続デバイス (event.target) を使って名前を取得
+    const deviceName = event.target.name || '不明なデバイス';
+    console.warn('BLEデバイスが切断されました:', deviceName);
+    
+    elem.bleConnectButton.textContent = 'BLE 未接続';
+    elem.bleConnectButton.classList.remove('ble-connected');
+    elem.bleConnectButton.classList.add('ble-disconnected');
+    
+    elem.statusDisplay.textContent = `BLE接続: 切断されました (${deviceName})。`;
+    elem.pitMessageDisplay.textContent = '接続が切れました。再接続してください。';
+    elem.pitMessageDisplay.style.color = '#ff4d4d'; // 赤色で警告
+    
+    // 変数をリセット
+    bleCharacteristic = null;
+    bleDevice = null;
+}
+
+
+/**
+ * 受信機デバイスに接続し、通知の監視を開始する
  */
 async function connectToPitDevice() {
+    // 既に接続されている場合は切断を試みる
+    if (bleDevice && bleDevice.gatt.connected) {
+        bleDevice.gatt.disconnect();
+        return; // 切断処理は onDeviceDisconnected で行われる
+    }
+
     elem.bleConnectButton.textContent = '接続中...';
     try {
-        // デバイスの要求
-        const device = await navigator.bluetooth.requestDevice({
+        // 1. デバイスの要求
+        bleDevice = await navigator.bluetooth.requestDevice({
             filters: [{ name: RECEIVER_DEVICE_NAME }],
             optionalServices: [SERVICE_UUID]
         });
         
-        elem.statusDisplay.textContent = `接続試行中... (${device.name})`;
+        elem.statusDisplay.textContent = `接続試行中... (${bleDevice.name})`;
 
-        // GATTサーバーへの接続
-        const server = await device.gatt.connect();
+        // 切断イベントの監視を接続前に設定
+        bleDevice.addEventListener('gattserverdisconnected', onDeviceDisconnected);
+
+        // 2. GATTサーバーへの接続
+        const server = await bleDevice.gatt.connect();
         const service = await server.getPrimaryService(SERVICE_UUID);
 
-        // 特性値の取得と通知の開始
+        // 3. 特性値の取得と通知の開始 (MTU交換とCCCD設定の2段階設定を含む)
         bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
 
         await bleCharacteristic.startNotifications();
@@ -213,33 +250,27 @@ async function connectToPitDevice() {
         elem.statusDisplay.textContent = 'BLE接続: OK. メッセージを監視中。';
         elem.pitMessageDisplay.textContent = '接続成功。メッセージを待っています...';
 
-        // 切断イベントの監視
-        device.addEventListener('gattserverdisconnected', onDeviceDisconnected);
 
     } catch (error) {
         console.error('BLE接続エラー:', error);
+        
+        // エラー処理後のボタンとステータスの更新
         elem.bleConnectButton.textContent = 'BLE 接続失敗';
         elem.bleConnectButton.classList.remove('ble-connected');
         elem.bleConnectButton.classList.add('ble-disconnected');
         
-        elem.statusDisplay.textContent = 'BLE接続: エラー。再試行してください。';
+        elem.statusDisplay.textContent = `BLE接続: エラー (${error.name || error.message})。再試行してください。`;
         elem.pitMessageDisplay.textContent = '接続エラー。再試行してください。';
-        elem.pitMessageDisplay.style.color = '#ff4d4d'; 
-    }
-}
+        elem.pitMessageDisplay.style.color = '#ff4d4d'; // 赤色で警告
+        
+        // 接続中にエラーが発生した場合、クリーンアップ
+        if (bleDevice && bleDevice.gatt.connected) {
+            bleDevice.gatt.disconnect();
+        }
+        bleDevice = null;
+        bleCharacteristic = null;
 
-/**
- * デバイスが切断されたときの処理
- */
-function onDeviceDisconnected(event) {
-    console.warn('BLEデバイスが切断されました:', event.target.name);
-    elem.bleConnectButton.textContent = 'BLE 未接続';
-    elem.bleConnectButton.classList.remove('ble-connected');
-    elem.bleConnectButton.classList.add('ble-disconnected');
-    
-    elem.statusDisplay.textContent = 'BLE接続: 切断されました。';
-    elem.pitMessageDisplay.textContent = '接続が切れました。再接続してください。';
-    elem.pitMessageDisplay.style.color = '#ff4d4d'; 
+    }
 }
 
 // ----------------------------------------------------
@@ -247,7 +278,7 @@ function onDeviceDisconnected(event) {
 // ----------------------------------------------------
 
 window.addEventListener('load', () => {
-    // Service Workerの登録（PWAとして動作させる場合）
+    // Service Workerの登録（PWAとして動作させる場合 - 既存のロジックは保持）
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/service-worker.js')
             .then(registration => {
