@@ -2,14 +2,10 @@ const CACHE_NAME = 'KLAP_messenger';
 const urlsToCache = [
   '/',
   '/index.html',
-    '/manifest.json',
-  '/service-worker.js',
+'/manifest.json',
+ '/service-worker.js',
   '/icon192.png',
   '/icon512.png',
-  // 画像やJavaScriptファイルなど、アプリを構成するすべての静的ファイルをここに追加
-  
-  
-  // その他のCSSやJSファイルなど
 ];
 
 // インストールイベント: キャッシュにファイルを保存
@@ -52,4 +48,5 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+
 });
